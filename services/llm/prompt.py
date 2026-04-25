@@ -1,5 +1,5 @@
 from models.schemas import CorrelationResult
-from config.settings import SYMPTOM_SCALE_DESCRIPTION
+from config.settings import HABIT_SCALE_DESCRIPTION, SYMPTOM_SCALE_DESCRIPTION
 
 def _format_correlations_for_prompt(
     correlations: list[CorrelationResult],
@@ -33,4 +33,16 @@ def _format_correlations_for_prompt(
     for s in used_symptoms:
         if s in SYMPTOM_SCALE_DESCRIPTION:
             lines.append(f"- {s}: {SYMPTOM_SCALE_DESCRIPTION[s]}")
+
+    lines.append("")
+    lines.append("Skala kebiasaan (habit) yang dipakai:")
+    # Hanya berikan skala habit yang memang muncul di korelasi sebagai trigger
+    used_triggers = {c.trigger for c in correlations}
+
+    for t in used_triggers:
+        if t in HABIT_SCALE_DESCRIPTION:
+            lines.append(f"- {t}: {HABIT_SCALE_DESCRIPTION[t]}")
+            
     return "\n".join(lines)
+
+

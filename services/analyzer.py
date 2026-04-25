@@ -6,7 +6,7 @@ from typing import Any
 import os
 from services.llm.llm import _call_gemini
 from config.settings import DEFAULT_MODEL, MIN_DAYS_FOR_ANALYSIS, GOAL_TO_SYMPTOM_FIELD
-from utils.formatter import humanize_insight
+# Hapus import humanize_insight dari sini karena akan dieksekusi di FastAPI saja
 
 def analyze_user_logs(
     logs: list[DailyLog],
@@ -15,38 +15,11 @@ def analyze_user_logs(
 ) -> dict[str, Any]:
     """
     Entry point utama. Dipanggil dari backend (FastAPI/Flask/etc).
-
-    Args:
-        logs: list DailyLog (urutan tanggal tidak harus sorted).
-        user_goals: ["jerawat", "rambut_rontok", ...] dari onboarding.
-        model: override model LLM kalau perlu.
-
-    Returns:
-        {
-            "status": "ok" | "insufficient_data" | "no_pattern",
-            "n_days": int,
-            "correlations": [...],   # raw stats untuk debugging/transparansi
-            "insights": [...],       # natural-language insights dari LLM
-            "message": str,          # human-readable status
-        }
     """
-    # api_key = api_key or os.environ.get("GEMINI_API_KEY")
 
     n_days = len({log.log_date for log in logs})
     n_entries = len(logs)
 
-    # if n_days < MIN_DAYS_FOR_ANALYSIS:
-    #     return {
-    #         "status": "insufficient_data",
-    #         "n_days": n_days,
-    #         "correlations": [],
-    #         "insights": [],
-    #         "message": (
-    #             f"Baru {n_days} hari data. Lanjut log "
-    #             f"{MIN_DAYS_FOR_ANALYSIS - n_days} hari lagi supaya AI bisa "
-    #             "mulai mencari pola."
-    #         ),
-    #     }
     if n_entries < MIN_DAYS_FOR_ANALYSIS:
         return {
             "status": "insufficient_data",
@@ -66,6 +39,7 @@ def analyze_user_logs(
         for g in user_goals
         if g in GOAL_TO_SYMPTOM_FIELD
     ]
+    
     if not symptom_fields:
         return {
             "status": "insufficient_data",
@@ -91,18 +65,17 @@ def analyze_user_logs(
         }
 
     # Step 2: LLM untuk natural-language insight
-
     insights = _call_gemini(
         correlations, n_days, user_goals,
     )
 
-    formatted_insights = [humanize_insight(i) for i in insights]
+    # PERBAIKAN: Return raw insights saja. (asdict jika object dataclass, atau list langsung jika dict)
+    raw_insights = [asdict(i) if hasattr(i, '__dataclass_fields__') else i for i in insights]
 
     return {
-        "insights": formatted_insights,
-        # "status": "ok",
-        # "n_days": n_days,
-        # "correlations": [asdict(c) for c in correlations],
-        # "insights": formatted_insights,
-        # "message": f"Ditemukan {len(insights)} insight dari {n_days} hari data.",
+        "status": "ok",
+        "n_days": n_days,
+        "correlations": [asdict(c) if hasattr(c, '__dataclass_fields__') else c for c in correlations],
+        "insights": raw_insights, # Kembalikan data original
+        "message": f"Ditemukan {len(insights)} insight dari {n_days} hari data.",
     }

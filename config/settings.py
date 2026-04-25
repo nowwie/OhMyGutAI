@@ -19,6 +19,8 @@ GOAL_TO_SYMPTOM_FIELD = {
     "lelah": "energy_score",
     "berat_badan": "weight_score",
     "mood": "mood_score",
+    "pencernaan": "digestion_score",
+    
 }
 
 # Skala symptom: semakin tinggi = semakin parah/buruk (kecuali energy & mood
@@ -30,6 +32,8 @@ SYMPTOM_SCALE_DESCRIPTION = {
     "energy_score": "0=energik, 1=biasa, 2=lelah berat",
     "weight_score": "0=stabil/turun, 1=naik sedikit, 2=naik banyak",
     "mood_score": "0=stabil, 1=naik-turun, 2=buruk",
+    "digestion_score": "0=normal, 1=irregular, 2=diarrhea",
+    
 }
 
 # Kategori food & habit yang akan diuji korelasinya
@@ -42,5 +46,12 @@ HABIT_FIELDS = [
     "sleep_hours",      # numeric
     "exercise",         # 0/1
     "stress_level",     # 1-3
-    "water_glasses",    # numeric
+    "water_glasses",   # numeric
+    "caffeine_alcohol"
 ]
+
+HABIT_SCALE_DESCRIPTION = {
+    "exercise": "0=none, 1=light, 2=active",
+    "stress_level": "0=relaxed, 1=moderate, 2=high",
+    "caffeine_alcohol": "0=none, 1=low, 2=high",
+}

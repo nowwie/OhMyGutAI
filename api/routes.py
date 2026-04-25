@@ -1,5 +1,5 @@
 
-from fastAPI import APIRouter
+from fastapi import APIRouter
 from services.analyzer import analyze_user_logs
 from models.schemas import DailyLog
 from utils.formatter import humanize_insight
