@@ -23,7 +23,8 @@ def analyze_user_logs(
     if n_entries < MIN_DAYS_FOR_ANALYSIS:
         return {
             "status": "insufficient_data",
-            "n_days":  n_entries,
+            "n_days":  n_days,
+            "n_entries": n_entries,
             "correlations": [],
             "insights": [],
             "message": (
@@ -56,6 +57,7 @@ def analyze_user_logs(
         return {
             "status": "no_pattern",
             "n_days": n_days,
+            "n_entries": n_entries,
             "correlations": [],
             "insights": [],
             "message": (
@@ -75,6 +77,7 @@ def analyze_user_logs(
     return {
         "status": "ok",
         "n_days": n_days,
+        "n_entries": n_entries,
         "correlations": [asdict(c) if hasattr(c, '__dataclass_fields__') else c for c in correlations],
         "insights": raw_insights, # Kembalikan data original
         "message": f"Ditemukan {len(insights)} insight dari {n_days} hari data.",

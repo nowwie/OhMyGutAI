@@ -1,34 +1,10 @@
+import math
 from models.schemas import DailyLog, CorrelationResult
 from config.settings import FOOD_CATEGORIES, LAG_DAYS, HABIT_FIELDS, CORRELATION_THRESHOLD
-from datetime import date, timedelta
-from collections import defaultdict
 from typing import Any
 
-def _group_by_date(logs: list[DailyLog]) -> dict[str, DailyLog]:
-    """Gabungkan multiple entries per hari jadi 1 DailyLog."""
-    grouped = defaultdict(list)
-    for log in logs:
-        grouped[log.log_date].append(log)
-
-    merged = {}
-    for date_str, day_logs in grouped.items():
-        merged_food = {}
-        merged_habits = {}
-        merged_symptoms = {}
-        for l in day_logs:
-            merged_food.update(l.food)
-            merged_habits.update(l.habits)
-            merged_symptoms.update(l.symptoms)
-        merged[date_str] = DailyLog(
-            log_date=date_str,
-            food=merged_food,
-            habits=merged_habits,
-            symptoms=merged_symptoms,
-        )
-    return merged
-
 def _pearson(x: list[float], y: list[float]) -> float:
-    """Pearson correlation tanpa numpy (supaya zero-dependency)."""
+    """Pearson correlation tanpa numpy (zero-dependency)."""
     n = len(x)
     if n < 2:
         return 0.0
@@ -44,32 +20,28 @@ def _pearson(x: list[float], y: list[float]) -> float:
 
 def _build_series(
     logs: list[DailyLog],
-    trigger_extractor,        # callable(log) -> float | None
+    trigger_extractor,
     symptom_field: str,
     lag: int,
 ) -> tuple[list[float], list[float]]:
-    """Bangun pasangan (trigger pada hari T, symptom pada hari T+lag)."""
-    # Index logs by date for easy lookup
-    # by_date: dict[str, DailyLog] = {log.log_date: log for log in logs}
-    by_date = _group_by_date(logs)
-    sorted_dates = sorted(by_date.keys())
-
+    """
+    Bangun pasangan data berdasarkan URUTAN input (Sesi).
+    Lag 0 = trigger & symptom di sesi yang sama.
+    Lag 1 = trigger di sesi i, symptom di sesi berikutnya (i+1).
+    """
     xs: list[float] = []
     ys: list[float] = []
-    for d_str in sorted_dates:
-        trigger_val = trigger_extractor(by_date[d_str])
-        if trigger_val is None:
-            continue
-        # Hitung tanggal target untuk symptom
-        target_date = (date.fromisoformat(d_str) + timedelta(days=lag)).isoformat()
-        target_log = by_date.get(target_date)
-        if target_log is None:
-            continue
-        symptom_val = target_log.symptoms.get(symptom_field)
-        if symptom_val is None:
-            continue
-        xs.append(float(trigger_val))
-        ys.append(float(symptom_val))
+
+    # Kita pakai urutan list (i), bukan tanggal (date)
+    # Ini kuncinya supaya input 3-5x sehari tetep bisa dihitung
+    for i in range(len(logs) - lag):
+        trigger_val = trigger_extractor(logs[i])
+        symptom_val = logs[i + lag].symptoms.get(symptom_field)
+
+        if trigger_val is not None and symptom_val is not None:
+            xs.append(float(trigger_val))
+            ys.append(float(symptom_val))
+            
     return xs, ys
 
 
@@ -77,8 +49,11 @@ def compute_correlations(
     logs: list[DailyLog],
     symptom_fields: list[str],
 ) -> list[CorrelationResult]:
-    """Hitung semua korelasi food/habit x symptom x lag, return yang signifikan."""
+    """Hitung korelasi berdasarkan urutan entri (intra-day support)."""
     results: list[CorrelationResult] = []
+
+    # Pastikan logs terurut berdasarkan waktu input (jika diperlukan)
+    # logs.sort(key=lambda x: x.log_date) 
 
     triggers: list[tuple[str, str, Any]] = []
     # Food triggers
@@ -86,20 +61,27 @@ def compute_correlations(
         triggers.append((cat, "food", lambda log, c=cat: log.food.get(c, 0)))
     # Habit triggers
     for habit in HABIT_FIELDS:
-        triggers.append((habit, "habit", lambda log, h=habit: log.habits.get(h)))
+        triggers.append((habit, "habit", lambda log, h=habit: log.habits.get(h, 0)))
 
     for trigger_name, trigger_type, extractor in triggers:
         for symptom in symptom_fields:
             for lag in LAG_DAYS:
+                # SEKARANG: Pakai urutan list, bukan tanggal
                 xs, ys = _build_series(logs, extractor, symptom, lag)
-                if len(xs) < 2:  # butuh min 3 pasangan supaya korelasi bermakna
+                
+                # Butuh minimal 3 pasang data biar korelasi nggak asal-asalan
+                if len(xs) < 3: 
                     continue
-                # Skip kalau trigger tidak pernah bervariasi (selalu 0 atau konstan)
-                if len(set(xs)) < 2:
+                    
+                # Skip kalau angkanya itu-itu aja (nggak bervariasi)
+                if len(set(xs)) < 2 or len(set(ys)) < 2:
                     continue
+                    
                 r = _pearson(xs, ys)
+                
                 if abs(r) < CORRELATION_THRESHOLD:
                     continue
+                    
                 results.append(CorrelationResult(
                     trigger=trigger_name,
                     trigger_type=trigger_type,
@@ -110,6 +92,6 @@ def compute_correlations(
                     direction="memperburuk" if r > 0 else "memperbaiki",
                 ))
 
-    # Sort by absolute correlation desc, ambil top 10 supaya prompt LLM ramping
+    # Ambil top 10 korelasi terkuat
     results.sort(key=lambda r: abs(r.correlation), reverse=True)
     return results[:10]

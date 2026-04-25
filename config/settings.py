@@ -2,7 +2,7 @@
 DEFAULT_MODEL = "google/gemini-2.5-flash"
 
 # Lag yang dipertimbangkan: efek makanan ke gejala butuh 1-3 hari
-LAG_DAYS = [1, 2, 3]
+LAG_DAYS = [0, 1, 2, 3]
 
 # Minimum data point supaya korelasi tidak noise. Kalau user baru log 5 hari,
 # kita tidak generate insight palsu.

@@ -12,7 +12,7 @@ from services.llm.prompt import _format_correlations_for_prompt
 
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-def _call_gemini(correlations, n_days, user_goals, model = "gemini-2.5-flash"):
+def _call_gemini(correlations, n_days, user_goals, model = "gemini-2.5-flash-lite"):
     prompt = _format_correlations_for_prompt(correlations, n_days, user_goals)
 
     full_prompt = SYSTEM_PROMPT + "\n\n" + prompt
