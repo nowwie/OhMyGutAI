@@ -1,11 +1,14 @@
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from typing import List
 
 import uvicorn
 from models.schemas import DailyLog
-from services.analyzer import analyze_user_logs
+from services.analyzer import analyze_user_logs, weekly_report
 from utils.formatter import humanize_insight
 from uvicorn import run
+from services.analyzer import calculate_symptom_trends 
+
+router = APIRouter()
 
 app = FastAPI(
     title="OhMyGut AI Analysis Gut Health",
@@ -40,5 +43,29 @@ def analyze(logs: List[DailyLog]):
 
     return result
 
+
+@app.post("/summary/trends")
+def get_symptom_trends(logs: List[DailyLog]):
+    # 1. Kasih datanya ke "dapur" buat dihitung
+    hasil_rekap = calculate_symptom_trends(logs)
+
+    # 2. Kasih balikan ke Flutter
+    return {
+        "status": "success",
+        "chart_data": hasil_rekap
+    }
+
+@app.post("/summary/weekly-report")
+def get_weekly_report(logs: List[DailyLog]):
+    if not logs:
+        return {"status": "error", "message": "Belum ada data untuk minggu ini."}
+        
+    report = weekly_report(logs, user_goals=["jerawat", "rambut_rontok"])
+    
+    return {
+        "status": "success",
+        "report": report
+    }
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

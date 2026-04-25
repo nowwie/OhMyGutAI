@@ -7,6 +7,7 @@ LAG_DAYS = [0, 1, 2, 3]
 # Minimum data point supaya korelasi tidak noise. Kalau user baru log 5 hari,
 # kita tidak generate insight palsu.
 MIN_DAYS_FOR_ANALYSIS = 3
+MIN_DAYS_FOR_WEEKLY_ANALYSIS = 7
 
 # Threshold korelasi absolut untuk dianggap "menarik untuk dianalisis LLM"
 CORRELATION_THRESHOLD = 0.2

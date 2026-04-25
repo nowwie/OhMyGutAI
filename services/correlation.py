@@ -81,6 +81,7 @@ def compute_correlations(
                 
                 if abs(r) < CORRELATION_THRESHOLD:
                     continue
+
                     
                 results.append(CorrelationResult(
                     trigger=trigger_name,
